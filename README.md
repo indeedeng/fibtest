@@ -12,11 +12,14 @@ threads equal to the number of CPUS minus the number of fast threads
 
 ## Running fibtest
 ```
-$ runfibtest 1; runfibtest
+$ ./runfibtest 1; ./runfibtest
 ```
 
 runfibtest optionally takes an arguement which is the total number of threads to spawn. With 
 no argument it will spawn one fast thread and  the number of threads equal to the number of processors.
+
+It returns the number of iterations of the fibonacci sequence it was able to accomplish, as well as how
+long it was throttled and the corresponding cpu usage that was used.
 
 
 ## License

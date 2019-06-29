@@ -1,6 +1,6 @@
 # Fibtest
 
-![NetflixOSS Lifecycle](https://img.shields.io/osslifecycle/indeedeng/fibtest.svg)
+![OSS Lifecycle](https://img.shields.io/osslifecycle/indeedeng/fibtest.svg)
 
 Fibtest is a small C application that runs the fibonacci sequence and reports
 how many iterations it completed.

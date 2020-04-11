@@ -35,8 +35,8 @@ checkandcompile () {
 
 # Save old governors, and assume all governors match
 savegovernors () {
-	OLDGOV=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)
-	OLDENERGY=$(cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference)
+	OLDGOV=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)
+	OLDENERGY=$(cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference 2>/dev/null)
 }
 
 # Set governors
@@ -44,10 +44,17 @@ setgovernors () {
 	SCALINGGOV=$1
 	ENERGYGOV=$2
 
+	if [[ -n $SCALINGGOV ]] && [[ -z $OLDGOV ]]; then
+		echo No existing scaling_governor found, not attempting to set it to "${SCALINGGOV}" >&2
+	fi
+	if [[ -n $ENERGYGOV ]] && [[ -z $OLDENERGY ]]; then
+		echo No existing energy_performance_preference found, not attempting to set it to "${ENERGYGOV}" >&2
+	fi
+
 	for (( i=0 ; i < NRCPUS ; i++ ))
 	do
-		sudo sh -c "echo '$SCALINGGOV' > /sys/devices/system/cpu/cpu${i}/cpufreq/scaling_governor"
-		sudo sh -c "echo '$ENERGYGOV' > /sys/devices/system/cpu/cpu${i}/cpufreq/energy_performance_preference"
+		[[ -n $SCALINGGOV ]] && [[ -n $OLDGOV ]] && sudo sh -c "echo '$SCALINGGOV' > /sys/devices/system/cpu/cpu${i}/cpufreq/scaling_governor"
+		[[ -n $ENERGYGOV ]] && [[ -n $OLDENERGY ]] && sudo sh -c "echo '$ENERGYGOV' > /sys/devices/system/cpu/cpu${i}/cpufreq/energy_performance_preference"
 	done
 }
 
@@ -73,7 +80,7 @@ setgovernors performance performance
 
 # Create CGROUP
 if [ ! -d ${CGROUPDIR}/${CGROUP} ] ; then
-	sudo mkdir -p ${CGROUPDIR}/${CGROUP}
+	sudo mkdir -p ${CGROUPDIR}/${CGROUP} || exit $?
 fi
 
 # Set the CPU quota

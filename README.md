@@ -24,8 +24,8 @@ see [blog post 1](https://engineering.indeedblog.com/blog/2019/12/unthrottled-fi
 and video of [Dave Chiluk's presentation at KubeCon 2019](https://youtu.be/UE7QX98-kO0).
 
 The important thing to understand is that this bug affects performance in proportion
-to the number of cores on the machine. This test will not be effective at demonstrating 
-the bug on a 4 core machine. At least 32 cores are recommended.
+to the number of cores on the machine. This test will not be as definitive on a  4 core machine.
+as on a higher core count machine.
 
 ## Running fibtest
 

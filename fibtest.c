@@ -55,7 +55,7 @@ void usage ()
 	"It then prints out the total number of iterations it was able to complete.\n"
 	"\n"
 	"It divides execution into fast and slow threads. Fast threads run as fast\n"
-	"as possible and slow threads run 100 iterations and the sleep for 10ms.\n"
+	"as possible and slow threads run 100 iterations and then sleep for 10ms.\n"
 	"\n"
 	"Options\n"
 	"-v, Verbose prints total number of iterations per thread\n"

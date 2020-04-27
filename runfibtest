@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #
 # Copyright (C) 2019 Indeed Inc.
 #
@@ -16,31 +16,44 @@
 # set -euo pipefail
 
 CGROUP=user.slice/fibtest
-CGROUPDIR=/sys/fs/cgroup/cpu,cpuacct
 typeset -i BNRTHROTT ANRTHROTT DNRTHROTT AUSAGE BUSAGE DUSAGE THREADS NRCPUS THREADEDIT THREADEDTIME THREADEDTHROT SINGLEIT SINGLETIME SINGLETHROT
 NRCPUS=$(getconf _NPROCESSORS_ONLN)
 THREADS=${1:-NRCPUS}
-QUOTA=$(( 10000 ))
+QUOTA=$((10000))
 
-checkandcompile () {
-	if [ ! -x fibtest ] ; then
+if [[ -d /sys/fs/cgroup/cpu,cpuacct ]]; then
+	CGROUPDIR=/sys/fs/cgroup/cpu,cpuacct
+	CACCTDIR=${CGROUPDIR}
+elif [[ -d /sys/fs/cgroup/cpu,cpuacct ]]; then
+	CGROUPDIR=/sys/fs/cgroup/cpuacct,cpu
+	CACCTDIR=${CGROUPDIR}
+elif [[ -d /sys/fs/cgroup/cpu ]]; then
+	CGROUPDIR=/sys/fs/cgroup/cpu
+	CACCTDIR=/sys/fs/cgroup/cpuacct
+else
+	echo Unable to find CGroup directory, giving up >&2
+	exit 1
+fi
+
+checkandcompile() {
+	if [ ! -x fibtest ]; then
 		make clean
 		make
-		if [ ! -x fibtest ] ; then
+		if [ ! -x fibtest ]; then
 			echo "Unable to compile fibtest\n"
-			exit 1 
+			exit 1
 		fi
 	fi
 }
 
 # Save old governors, and assume all governors match
-savegovernors () {
+savegovernors() {
 	OLDGOV=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)
 	OLDENERGY=$(cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference 2>/dev/null)
 }
 
 # Set governors
-setgovernors () {
+setgovernors() {
 	SCALINGGOV=$1
 	ENERGYGOV=$2
 
@@ -51,48 +64,48 @@ setgovernors () {
 		echo No existing energy_performance_preference found, not attempting to set it to "${ENERGYGOV}" >&2
 	fi
 
-	for (( i=0 ; i < NRCPUS ; i++ ))
-	do
+	for ((i = 0; i < NRCPUS; i++)); do
 		[[ -n $SCALINGGOV ]] && [[ -n $OLDGOV ]] && sudo sh -c "echo '$SCALINGGOV' > /sys/devices/system/cpu/cpu${i}/cpufreq/scaling_governor"
 		[[ -n $ENERGYGOV ]] && [[ -n $OLDENERGY ]] && sudo sh -c "echo '$ENERGYGOV' > /sys/devices/system/cpu/cpu${i}/cpufreq/energy_performance_preference"
 	done
 }
 
-runtest () {
+runtest() {
 	BNRTHROTT=$(grep nr_throttled ${CGROUPDIR}/${CGROUP}/cpu.stat | awk '{print $2}')
-	BUSAGE=$(cat ${CGROUPDIR}/${CGROUP}/cpuacct.usage)
+	BUSAGE=$(cat ${CACCTDIR}/${CGROUP}/cpuacct.usage)
 
 	#####  RUN TEST #####
-	ITERATIONS=$(./fibtest -t "$THREADS" -s 5 | awk -F': ' '{print $2}' )
+	echo
+	echo "Running test wtih ${THREADS} thread(s) on machine with ${NRCPUS} CPUs"
+	ITERATIONS=$(./fibtest -t "$THREADS" -s 5 | awk -F': ' '{print $2}')
 	echo "Iterations Completed(M): $ITERATIONS"
 	ANRTHROTT=$(grep nr_throttled ${CGROUPDIR}/${CGROUP}/cpu.stat | awk '{print $2}')
-	AUSAGE=$(cat ${CGROUPDIR}/${CGROUP}/cpuacct.usage)
-	DNRTHROTT=$(( ANRTHROTT - BNRTHROTT ))
-	DUSAGE=$(( AUSAGE - BUSAGE ))
+	AUSAGE=$(cat ${CACCTDIR}/${CGROUP}/cpuacct.usage)
+	DNRTHROTT=$((ANRTHROTT - BNRTHROTT))
+	DUSAGE=$((AUSAGE - BUSAGE))
 	echo "Throttled for: $DNRTHROTT "
-	echo "CPU Usage (msecs) = $((DUSAGE / 1000000 ))"
+	echo "CPU Usage (msecs) = $((DUSAGE / 1000000))"
 }
-
 
 checkandcompile
 savegovernors
 setgovernors performance performance
 
 # Create CGROUP
-if [ ! -d ${CGROUPDIR}/${CGROUP} ] ; then
+if [ ! -d ${CGROUPDIR}/${CGROUP} ]; then
 	sudo mkdir -p ${CGROUPDIR}/${CGROUP} || exit $?
 fi
 
 # Set the CPU quota
 sudo sh -c "echo $QUOTA > ${CGROUPDIR}/${CGROUP}/cpu.cfs_quota_us"
 sudo sh -c "echo $$ >> ${CGROUPDIR}/${CGROUP}/tasks"
+[[ ${CACCTDIR} != ${CGROUPDIR} ]] && sudo sh -c "echo $$ >> ${CACCTDIR}/${CGROUP}/tasks"
 
 # ****************** RUN THE TEST ***************
-# Uses Number of CPUs 
-runtest 
-# 
+# Uses Number of CPUs
+runtest
+#
 THREADEDIT=${ITERATIONS}
-
 
 # ***********************************************
 
